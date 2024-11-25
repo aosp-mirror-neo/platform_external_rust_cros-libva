@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 package {
-    default_applicable_licenses: ["external_rust_crates_cros-libva_license"],
+    default_applicable_licenses: ["external_rust_cros-libva_license"],
 }
 
 rust_binary_host {
@@ -25,8 +25,8 @@ rust_bindgen {
     custom_bindgen: "cros_libva_bindgen_build",
     wrapper_src: "android_wrapper.h",
     source_stem: "bindings",
-    cflags: ["-I external/rust/crates/cros-libva/lib"],
-    visibility: ["//external/rust/crates/cros-libva/lib"],
+    cflags: ["-I external/rust/cros-libva/lib"],
+    visibility: ["//external/rust/cros-libva/lib"],
 
     vendor: true,
     enabled: false,

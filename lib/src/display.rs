@@ -15,6 +15,7 @@ use thiserror::Error;
 use crate::bindings;
 use crate::config::Config;
 use crate::context::Context;
+use crate::protected_session::ProtectedSession;
 use crate::surface::Surface;
 use crate::va_check;
 use crate::SurfaceMemoryDescriptor;
@@ -322,6 +323,13 @@ impl Display {
         entrypoint: bindings::VAEntrypoint::Type,
     ) -> Result<Config, VaError> {
         Config::new(Rc::clone(self), attrs, profile, entrypoint)
+    }
+
+    pub fn create_protected_session(
+        self: &Rc<Self>,
+        config: &Config,
+    ) -> Result<ProtectedSession, VaError> {
+        ProtectedSession::new(Rc::clone(self), config)
     }
 
     /// Returns available image formats for this display by wrapping around `vaQueryImageFormats`.

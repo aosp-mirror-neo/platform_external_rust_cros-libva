@@ -298,10 +298,13 @@ impl Buffer {
                 wrapper.inner_mut() as *mut _ as *mut std::ffi::c_void,
                 std::mem::size_of_val(wrapper.inner_mut()),
             ),
-
             BufferType::EncPackedHeaderData(ref data) => {
                 (data.as_ptr() as *mut std::ffi::c_void, data.len())
             }
+            BufferType::EncryptionParameters(ref mut c_param) => (
+                c_param as *mut _ as *mut std::ffi::c_void,
+                std::mem::size_of_val(c_param),
+            ),
         };
 
         // Safe because `self` represents a valid `VAContext`. `ptr` and `size` are also ensured to
@@ -380,6 +383,8 @@ pub enum BufferType {
     EncPackedHeaderParameter(EncPackedHeaderParameter),
     /// Abstraction over `VAEncPackedHeaderDataBufferType`.
     EncPackedHeaderData(Vec<u8>),
+    /// Abstraction over `VAEncryptionParameters`
+    EncryptionParameters(bindings::VAEncryptionParameters),
 }
 
 impl BufferType {
@@ -425,6 +430,10 @@ impl BufferType {
 
             BufferType::EncPackedHeaderData(_) => {
                 bindings::VABufferType::VAEncPackedHeaderDataBufferType
+            }
+
+            BufferType::EncryptionParameters(_) => {
+                bindings::VABufferType::VAEncryptionParameterBufferType
             }
         }
     }

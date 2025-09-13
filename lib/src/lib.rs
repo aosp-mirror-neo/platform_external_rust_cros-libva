@@ -15,6 +15,7 @@ mod display;
 mod generic_value;
 mod image;
 mod picture;
+mod protected_session;
 mod surface;
 mod usage_hint;
 
@@ -28,6 +29,7 @@ pub use display::*;
 pub use generic_value::*;
 pub use image::*;
 pub use picture::*;
+pub use protected_session::*;
 pub use surface::*;
 pub use usage_hint::*;
 

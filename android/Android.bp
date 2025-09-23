@@ -19,7 +19,7 @@ rust_defaults_cros_codecs_protected_content {
         protected_content: {
             intel: {
                 header_libs: [
-                    "//vendor/intel/widevine/oemcrypto:liboemcrypto_intel_headers",
+                    "//vendor/intel/widevine/oemcrypto:libva_protected_content_headers",
                 ],
                 cflags: ["-DINTEL_PROTECTED_CONTENT_HEADERS"],
            },

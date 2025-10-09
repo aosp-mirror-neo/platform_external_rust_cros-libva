@@ -59,7 +59,7 @@ impl ProtectedSession {
 
         // Safe because `display` is a valid display handle and `context` is a valid VAContext.
         va_check(unsafe {
-            bindings::vaAttachProtectedSession(self.display.handle(), self.id, context.id())
+            bindings::vaAttachProtectedSession(self.display.handle(), context.id(), self.id)
         })?;
 
         self.context_id = Some(context.id());

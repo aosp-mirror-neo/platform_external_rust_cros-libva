@@ -19,8 +19,10 @@ soong_config_module_type_import {
 rust_defaults_cros_codecs_protected_content {
     name: "cros_libva_protected_content_rust_library_defaults",
     soong_config_variables: {
-        intel_protected_content: {
-            features: ["intel-protected-content-headers"],
+        protected_content: {
+            intel: {
+                features: ["intel-protected-content-headers"],
+            },
         },
     },
 }

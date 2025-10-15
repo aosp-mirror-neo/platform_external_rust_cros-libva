@@ -16,11 +16,13 @@ soong_config_module_type_import {
 rust_defaults_cros_codecs_protected_content {
     name: "cros_libva_protected_content_rust_bindgen_defaults",
     soong_config_variables: {
-        intel_protected_content: {
-            header_libs: [
-                "//vendor/intel/widevine/oemcrypto:liboemcrypto_intel_headers",
-            ],
-            cflags: ["-DINTEL_PROTECTED_CONTENT_HEADERS"],
+        protected_content: {
+            intel: {
+                header_libs: [
+                    "//vendor/intel/widevine/oemcrypto:liboemcrypto_intel_headers",
+                ],
+                cflags: ["-DINTEL_PROTECTED_CONTENT_HEADERS"],
+           },
         },
     },
 }

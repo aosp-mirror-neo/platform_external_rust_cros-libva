@@ -8,4 +8,5 @@
 
 #if defined(INTEL_PROTECTED_CONTENT_HEADERS)
 #include <va_protected_content.h>
+#include <va_protected_content_widevine.h>
 #endif  // defined(INTEL_PROTECTED_CONTENT_HEADERS)

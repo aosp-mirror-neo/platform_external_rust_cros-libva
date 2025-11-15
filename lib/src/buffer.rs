@@ -305,6 +305,14 @@ impl Buffer {
                 c_param as *mut _ as *mut std::ffi::c_void,
                 std::mem::size_of_val(c_param),
             ),
+            BufferType::ProtectedSliceDataBuffer(ref mut data) => {
+                (data.as_mut_ptr() as *mut std::ffi::c_void, data.len())
+            }
+            #[cfg(feature = "intel-protected-content-headers")]
+            BufferType::CencStatusParameterBuffer(ref mut c_param) => (
+                c_param as *mut _ as *mut std::ffi::c_void,
+                std::mem::size_of_val(c_param),
+            ),
         };
 
         // Safe because `self` represents a valid `VAContext`. `ptr` and `size` are also ensured to
@@ -385,6 +393,12 @@ pub enum BufferType {
     EncPackedHeaderData(Vec<u8>),
     /// Abstraction over `VAEncryptionParameters`
     EncryptionParameters(bindings::VAEncryptionParameters),
+    /// Abstraction over `VAProtectedSliceDataBufferType`.
+    ProtectedSliceDataBuffer(Vec<u8>),
+    /// Abstraction over `VACencStatusParameters`.
+    /// The structure is defined in the intel downstream header.
+    #[cfg(feature = "intel-protected-content-headers")]
+    CencStatusParameterBuffer(bindings::VACencStatusParameters),
 }
 
 impl BufferType {
@@ -434,6 +448,13 @@ impl BufferType {
 
             BufferType::EncryptionParameters(_) => {
                 bindings::VABufferType::VAEncryptionParameterBufferType
+            }
+            BufferType::ProtectedSliceDataBuffer(_) => {
+                bindings::VABufferType::VAProtectedSliceDataBufferType
+            }
+            #[cfg(feature = "intel-protected-content-headers")]
+            BufferType::CencStatusParameterBuffer(_) => {
+                bindings::VACencStatusParameterBufferType as bindings::VABufferType::Type
             }
         }
     }

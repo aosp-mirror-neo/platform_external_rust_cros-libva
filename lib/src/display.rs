@@ -111,7 +111,7 @@ impl Display {
         let mut minor = 0i32;
         // Safe because we ensure that the display is valid (i.e not NULL) before calling
         // vaInitialize. The File will close the DRM fd on drop.
-        va_check(unsafe { bindings::vaInitialize(display, &mut major, &mut minor) })
+        unsafe { va_check!(bindings::vaInitialize(display, &mut major, &mut minor)) }
             .map(|()| {
                 Rc::new(Self {
                     handle: display,
@@ -151,13 +151,13 @@ impl Display {
 
         // Safe because `self` represents a valid `VADisplay` and the vector has `max_num_profiles`
         // as capacity.
-        va_check(unsafe {
-            bindings::vaQueryConfigProfiles(
+        unsafe {
+            va_check!(bindings::vaQueryConfigProfiles(
                 self.handle,
                 profiles.as_mut_ptr(),
                 &mut max_num_profiles,
-            )
-        })?;
+            ))
+        }?;
 
         // Safe because `profiles` is allocated with a `max_num_profiles` capacity and
         // `vaQueryConfigProfiles` wrote the actual number of profiles to `max_num_entrypoints`.
@@ -199,14 +199,14 @@ impl Display {
 
         // Safe because `self` represents a valid VADisplay and the vector has `max_num_entrypoints`
         // as capacity.
-        va_check(unsafe {
-            bindings::vaQueryConfigEntrypoints(
+        unsafe {
+            va_check!(bindings::vaQueryConfigEntrypoints(
                 self.handle,
                 profile,
                 entrypoints.as_mut_ptr(),
                 &mut max_num_entrypoints,
-            )
-        })?;
+            ))
+        }?;
 
         // Safe because `entrypoints` is allocated with a `max_num_entrypoints` capacity, and
         // `vaQueryConfigEntrypoints` wrote the actual number of entrypoints to
@@ -231,15 +231,15 @@ impl Display {
     ) -> Result<(), VaError> {
         // Safe because `self` represents a valid VADisplay. The slice length is passed to the C
         // function, so it is impossible to write past the end of the slice's storage by mistake.
-        va_check(unsafe {
-            bindings::vaGetConfigAttributes(
+        unsafe {
+            va_check!(bindings::vaGetConfigAttributes(
                 self.handle,
                 profile,
                 entrypoint,
                 attributes.as_mut_ptr(),
                 attributes.len() as i32,
-            )
-        })
+            ))
+        }
     }
 
     /// Creates `Surface`s by wrapping around a `vaCreateSurfaces` call.
@@ -341,13 +341,13 @@ impl Display {
         // Safe because `self` represents a valid VADisplay. The `image_formats` vector is properly
         // initialized and a valid size is passed to the C function, so it is impossible to write
         // past the end of their storage by mistake.
-        va_check(unsafe {
-            bindings::vaQueryImageFormats(
+        unsafe {
+            va_check!(bindings::vaQueryImageFormats(
                 self.handle,
                 image_formats.as_mut_ptr(),
                 &mut num_image_formats,
-            )
-        })?;
+            ))
+        }?;
 
         // Safe because the C function will have written exactly `num_image_format` entries, which
         // is known to be within the vector's capacity.

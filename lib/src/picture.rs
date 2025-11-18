@@ -155,13 +155,13 @@ impl<T> Picture<PictureNew, T> {
     {
         // Safe because `self.inner.context` represents a valid VAContext and
         // `self.inner.surface` represents a valid VASurface.
-        let res = va_check(unsafe {
-            bindings::vaBeginPicture(
+        let res = unsafe {
+            va_check!(bindings::vaBeginPicture(
                 self.inner.context.display().handle(),
                 self.inner.context.id(),
                 self.surface().id(),
-            )
-        });
+            ))
+        };
 
         res.map(|()| Picture {
             inner: self.inner,
@@ -177,14 +177,14 @@ impl<T> Picture<PictureBegin, T> {
         // represents a valid `VASurface`. `buffers` point to a Rust struct and the vector length is
         // passed to the C function, so it is impossible to write past the end of the vector's
         // storage by mistake.
-        va_check(unsafe {
-            bindings::vaRenderPicture(
+        unsafe {
+            va_check!(bindings::vaRenderPicture(
                 self.inner.context.display().handle(),
                 self.inner.context.id(),
                 Buffer::as_id_vec(&self.inner.buffers).as_mut_ptr(),
                 self.inner.buffers.len() as i32,
-            )
-        })
+            ))
+        }
         .map(|()| Picture {
             inner: self.inner,
             phantom: PhantomData,
@@ -196,12 +196,12 @@ impl<T> Picture<PictureRender, T> {
     /// Wrapper around `vaEndPicture`.
     pub fn end(self) -> Result<Picture<PictureEnd, T>, VaError> {
         // Safe because `self.inner.context` represents a valid `VAContext`.
-        va_check(unsafe {
-            bindings::vaEndPicture(
+        unsafe {
+            va_check!(bindings::vaEndPicture(
                 self.inner.context.display().handle(),
                 self.inner.context.id(),
-            )
-        })
+            ))
+        }
         .map(|()| Picture {
             inner: self.inner,
             phantom: PhantomData,

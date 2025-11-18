@@ -35,9 +35,13 @@ impl ProtectedSession {
     pub(crate) fn new(display: Rc<Display>, config: &Config) -> Result<Self, VaError> {
         let mut session_id = 0;
         // Safe because `display` is a valid display handle and `config` is a valid VAConfig.
-        va_check(unsafe {
-            bindings::vaCreateProtectedSession(display.handle(), config.id(), &mut session_id)
-        })?;
+        unsafe {
+            va_check!(bindings::vaCreateProtectedSession(
+                display.handle(),
+                config.id(),
+                &mut session_id
+            ))
+        }?;
 
         Ok(Self {
             display,
@@ -52,15 +56,19 @@ impl ProtectedSession {
             log::error!(
                 "Please detach the existing attached context before attaching a new context"
             );
-            return Err(VaError(
+            return Err(VaError::non_va_func(
                 NonZero::new(bindings::VA_STATUS_ERROR_OPERATION_FAILED as i32).unwrap(),
             ));
         }
 
         // Safe because `display` is a valid display handle and `context` is a valid VAContext.
-        va_check(unsafe {
-            bindings::vaAttachProtectedSession(self.display.handle(), context.id(), self.id)
-        })?;
+        unsafe {
+            va_check!(bindings::vaAttachProtectedSession(
+                self.display.handle(),
+                context.id(),
+                self.id
+            ))
+        }?;
 
         self.context_id = Some(context.id());
         Ok(())
@@ -72,9 +80,12 @@ impl ProtectedSession {
             return Ok(());
         }
         // Safe because `display` is a valid display handle and we checked that `context_id` is not `None`.
-        va_check(unsafe {
-            bindings::vaDetachProtectedSession(self.display.handle(), self.context_id.unwrap())
-        })?;
+        unsafe {
+            va_check!(bindings::vaDetachProtectedSession(
+                self.display.handle(),
+                self.context_id.unwrap(),
+            ))
+        }?;
 
         self.context_id = None;
         Ok(())
@@ -84,9 +95,13 @@ impl ProtectedSession {
     pub fn execute(&self, buffer: &ProtectedSessionExecuteBuffer) -> Result<(), VaError> {
         // Safe because `self` represents a valid `VAProtectedSessionID`. `buffer` is also a valid
         // pointer to a `VAProtectedSessionExecuteBuffer` struct.
-        va_check(unsafe {
-            bindings::vaProtectedSessionExecute(self.display.handle(), self.id, buffer.id())
-        })
+        unsafe {
+            va_check!(bindings::vaProtectedSessionExecute(
+                self.display.handle(),
+                self.id,
+                buffer.id()
+            ))
+        }
     }
 
     /// Create a `ProtectedSessionExecuteBuffer` to be used with `execute`.
@@ -115,8 +130,8 @@ impl ProtectedSession {
         // used instead of a context id.
         // Safe because `self` represents a valid `VAProtectedSessionID`. `struct_in_ptr` is also a
         // valid pointer to a `VAProtectedSessionExecuteBuffer` struct.
-        va_check(unsafe {
-            bindings::vaCreateBuffer(
+        unsafe {
+            va_check!(bindings::vaCreateBuffer(
                 self.display.handle(),
                 self.id,
                 bindings::VABufferType::VAProtectedSessionExecuteBufferType,
@@ -124,8 +139,8 @@ impl ProtectedSession {
                 1u32,
                 struct_in_ptr,
                 &mut buffer_id,
-            )
-        })?;
+            ))
+        }?;
 
         Ok(ProtectedSessionExecuteBuffer::new(
             self.display.clone(),
@@ -142,8 +157,13 @@ impl Drop for ProtectedSession {
         self.detach()
             .unwrap_or_else(|e| error!("vaDetachProtectedSession failed: {}", e));
         // Safe because `self` represents a valid `VAProtectedSessionID`.
-        va_check(unsafe { bindings::vaDestroyProtectedSession(self.display.handle(), self.id) })
-            .unwrap_or_else(|e| error!("vaDestroyProtectedSession failed: {}", e));
+        unsafe {
+            va_check!(bindings::vaDestroyProtectedSession(
+                self.display.handle(),
+                self.id
+            ))
+        }
+        .unwrap_or_else(|e| error!("vaDestroyProtectedSession failed: {}", e));
     }
 }
 
@@ -210,7 +230,13 @@ impl<'a> ProtectedSessionExecuteBuffer<'a> {
 
         // Safe because `self` holds a valid buffer ID and we check the return value. `addr`
         // is also a valid pointer.
-        va_check(unsafe { bindings::vaMapBuffer(self.display.handle(), self.id(), &mut addr) })?;
+        unsafe {
+            va_check!(bindings::vaMapBuffer(
+                self.display.handle(),
+                self.id(),
+                &mut addr
+            ))
+        }?;
 
         // Safe because the trusted VA-API video driver returns a valid pointer to a
         // `VAProtectedSessionExecuteBuffer` struct when `vaMapBuffer()` is successful.
@@ -225,8 +251,12 @@ impl<'a> ProtectedSessionExecuteBuffer<'a> {
 impl Drop for ProtectedSessionExecuteBuffer<'_> {
     fn drop(&mut self) {
         // Safe because `display` is a valid display handle and `buffer_id` is a valid buffer ID.
-        let status =
-            va_check(unsafe { bindings::vaDestroyBuffer(self.display.handle(), self.buffer_id) });
+        let status = unsafe {
+            va_check!(bindings::vaDestroyBuffer(
+                self.display.handle(),
+                self.buffer_id,
+            ))
+        };
 
         if status.is_err() {
             error!("vaDestroyBuffer failed: {}", status.unwrap_err());
@@ -257,9 +287,12 @@ impl<'a> MappedProtectedSessionExecuteBuffer<'a> {
 impl<'a> Drop for MappedProtectedSessionExecuteBuffer<'a> {
     fn drop(&mut self) {
         // Safe because `display` is a valid display handle and `source` holds a valid buffer ID.
-        let status = va_check(unsafe {
-            bindings::vaUnmapBuffer(self.source.display.handle(), self.source.id())
-        });
+        let status = unsafe {
+            va_check!(bindings::vaUnmapBuffer(
+                self.source.display.handle(),
+                self.source.id()
+            ))
+        };
         if status.is_err() {
             error!("vaUnmapBuffer failed: {}", status.unwrap_err());
         }

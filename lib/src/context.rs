@@ -49,8 +49,8 @@ impl Context {
         // Safe because `self` represents a valid VADisplay and render_targets
         // and ntargets are properly initialized. Note that render_targets==NULL
         // is valid so long as ntargets==0.
-        va_check(unsafe {
-            bindings::vaCreateContext(
+        unsafe {
+            va_check!(bindings::vaCreateContext(
                 display.handle(),
                 config.id(),
                 coded_width as i32,
@@ -59,8 +59,8 @@ impl Context {
                 render_targets.as_mut_ptr(),
                 render_targets.len() as i32,
                 &mut context_id,
-            )
-        })?;
+            ))
+        }?;
 
         Ok(Rc::new(Self {
             display,
@@ -93,7 +93,7 @@ impl Drop for Context {
     fn drop(&mut self) {
         // Safe because `self` represents a valid VAContext.
         let status =
-            va_check(unsafe { bindings::vaDestroyContext(self.display.handle(), self.id) });
+            unsafe { va_check!(bindings::vaDestroyContext(self.display.handle(), self.id)) };
 
         if status.is_err() {
             error!("vaDestroyContext failed: {}", status.unwrap_err());

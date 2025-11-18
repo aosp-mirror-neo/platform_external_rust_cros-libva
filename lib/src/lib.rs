@@ -37,12 +37,24 @@ use std::num::NonZeroI32;
 
 /// A `VAStatus` that is guaranteed to not be `VA_STATUS_SUCCESS`.
 #[derive(Debug)]
-pub struct VaError(NonZeroI32);
+pub struct VaError {
+    /// The function return vaStatus value.
+    status: NonZeroI32,
+    /// The called function name.
+    function_name: &'static str,
+}
 
 impl VaError {
     /// Returns the `VAStatus` of this error.
     pub fn va_status(&self) -> VAStatus {
-        self.0.get() as VAStatus
+        self.status.get() as VAStatus
+    }
+
+    pub fn non_va_func(status: NonZeroI32) -> Self {
+        Self {
+            status,
+            function_name: "None",
+        }
     }
 }
 
@@ -52,24 +64,46 @@ impl std::fmt::Display for VaError {
 
         // Safe because `vaErrorStr` will return a pointer to a statically allocated, null
         // terminated C string. The pointer is guaranteed to never be null.
-        let err_str = unsafe { CStr::from_ptr(bindings::vaErrorStr(self.0.get())) }
+        let err_str = unsafe { CStr::from_ptr(bindings::vaErrorStr(self.status.get())) }
             .to_str()
             .unwrap();
-        f.write_str(err_str)
+        write!(f, "{}, ({})", err_str, self.function_name)
     }
 }
 
 impl std::error::Error for VaError {}
 
+fn va_check_internal(function_name: &'static str, code: VAStatus) -> Result<(), VaError> {
+    match code as u32 {
+        bindings::VA_STATUS_SUCCESS => Ok(()),
+        _ => Err(VaError {
+            status: unsafe { NonZeroI32::new_unchecked(code) },
+            function_name,
+        }),
+    }
+}
+
 /// Checks a VA return value and returns a `VaError` if it is not `VA_STATUS_SUCCESS`.
 ///
 /// This can be used on the return value of any VA function returning `VAStatus` in order to
 /// convert it to a proper Rust `Result`.
-fn va_check(code: VAStatus) -> Result<(), VaError> {
-    match code as u32 {
-        bindings::VA_STATUS_SUCCESS => Ok(()),
-        _ => Err(VaError(unsafe { NonZeroI32::new_unchecked(code) })),
-    }
+#[macro_export]
+macro_rules! va_check {
+    // 1. For module::function(args..) calls (e.g., bindings::vaCreateBuffer(...))
+    ($mod:ident :: $func:ident ( $($args:expr),* $(,)? ) ) => {
+        $crate::va_check_internal(
+            concat!(stringify!($mod), "::", stringify!($func)),
+            $mod :: $func ( $($args),* ) ,
+        )
+    };
+
+    // 2. For simple_function(args...) calls (e.g., vaInitialize(...))
+    ($func:ident ( $($args:expr),* $(,)? ) ) => {
+        $crate::va_check2(
+            stringify!($func),
+            $func ( $($args),* ),
+        )
+    };
 }
 
 #[cfg(test)]

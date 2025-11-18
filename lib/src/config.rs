@@ -43,16 +43,16 @@ impl Config {
         //
         // The `attrs` vector is also properly initialized and its actual size is passed to
         // `vaCreateConfig`, so it is impossible to write past the end of its storage by mistake.
-        va_check(unsafe {
-            bindings::vaCreateConfig(
+        unsafe {
+            va_check!(bindings::vaCreateConfig(
                 display.handle(),
                 profile,
                 entrypoint,
                 attrs.as_mut_ptr(),
                 attrs.len() as i32,
                 &mut config_id,
-            )
-        })?;
+            ))
+        }?;
 
         Ok(Self {
             display,
@@ -75,27 +75,27 @@ impl Config {
         // much space is needed by the C API by passing in NULL in the first
         // call to `vaQuerySurfaceAttributes`.
         let attrs_len: std::os::raw::c_uint = 0;
-        va_check(unsafe {
-            bindings::vaQuerySurfaceAttributes(
+        unsafe {
+            va_check!(bindings::vaQuerySurfaceAttributes(
                 self.display.handle(),
                 self.id,
                 std::ptr::null_mut(),
                 &attrs_len as *const _ as *mut std::os::raw::c_uint,
-            )
-        })?;
+            ))
+        }?;
 
         let mut attrs = Vec::with_capacity(attrs_len as usize);
         // Safe because we allocate a vector with the required capacity as
         // returned by the initial call to vaQuerySurfaceAttributes. We then
         // pass a valid pointer to it.
-        va_check(unsafe {
-            bindings::vaQuerySurfaceAttributes(
+        unsafe {
+            va_check!(bindings::vaQuerySurfaceAttributes(
                 self.display.handle(),
                 self.id,
                 attrs.as_mut_ptr(),
                 &attrs_len as *const _ as *mut std::os::raw::c_uint,
-            )
-        })?;
+            ))
+        }?;
 
         // Safe because vaQuerySurfaceAttributes will have written to
         // exactly attrs_len entries in the vector.
@@ -128,7 +128,8 @@ impl Config {
 impl Drop for Config {
     fn drop(&mut self) {
         // Safe because `self` represents a valid Config.
-        let status = va_check(unsafe { bindings::vaDestroyConfig(self.display.handle(), self.id) });
+        let status =
+            unsafe { va_check!(bindings::vaDestroyConfig(self.display.handle(), self.id)) };
 
         if status.is_err() {
             error!("vaDestroyConfig failed: {}", status.unwrap_err());

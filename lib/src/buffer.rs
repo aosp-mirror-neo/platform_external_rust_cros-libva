@@ -318,8 +318,8 @@ impl Buffer {
         // Safe because `self` represents a valid `VAContext`. `ptr` and `size` are also ensured to
         // be correct, as `ptr` is just a cast to `*c_void` from a Rust struct, and `size` is
         // computed from `std::mem::size_of_val`.
-        va_check(unsafe {
-            bindings::vaCreateBuffer(
+        unsafe {
+            va_check!(bindings::vaCreateBuffer(
                 context.display().handle(),
                 context.id(),
                 type_.inner(),
@@ -327,8 +327,8 @@ impl Buffer {
                 nb_elements as u32,
                 ptr,
                 &mut buffer_id,
-            )
-        })?;
+            ))?;
+        }
 
         Ok(Self {
             context,
@@ -347,9 +347,12 @@ impl Drop for Buffer {
     fn drop(&mut self) {
         // Safe because `self` represents a valid buffer, created with
         // vaCreateBuffers.
-        let status = va_check(unsafe {
-            bindings::vaDestroyBuffer(self.context.display().handle(), self.id)
-        });
+        let status = unsafe {
+            va_check!(bindings::vaDestroyBuffer(
+                self.context.display().handle(),
+                self.id,
+            ))
+        };
 
         if status.is_err() {
             error!("vaDestroyBuffer failed: {}", status.unwrap_err());
@@ -612,9 +615,13 @@ impl<'p> MappedCodedBuffer<'p> {
         let mut addr = std::ptr::null_mut();
         let mut segments = Vec::new();
 
-        va_check(unsafe {
-            bindings::vaMapBuffer(buffer.0.context.display().handle(), buffer.id(), &mut addr)
-        })?;
+        unsafe {
+            va_check!(bindings::vaMapBuffer(
+                buffer.0.context.display().handle(),
+                buffer.id(),
+                &mut addr
+            ))?
+        };
 
         while !addr.is_null() {
             let segment: &bindings::VACodedBufferSegment =
@@ -650,9 +657,12 @@ impl<'p> MappedCodedBuffer<'p> {
 
 impl<'p> Drop for MappedCodedBuffer<'p> {
     fn drop(&mut self) {
-        let status = va_check(unsafe {
-            bindings::vaUnmapBuffer(self.buffer.0.context.display().handle(), self.buffer.id())
-        });
+        let status = unsafe {
+            va_check!(bindings::vaUnmapBuffer(
+                self.buffer.0.context.display().handle(),
+                self.buffer.id(),
+            ))
+        };
 
         if status.is_err() {
             error!("vaUnmapBuffer failed: {}", status.unwrap_err());

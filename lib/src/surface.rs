@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 use std::any::Any;
+use std::cmp::min;
 use std::os::fd::FromRawFd;
 use std::os::fd::OwnedFd;
 use std::os::raw::c_void;
@@ -41,6 +42,7 @@ pub enum MemoryType {
     V4L2 = bindings::VA_SURFACE_ATTRIB_MEM_TYPE_V4L2,
     UserPtr = bindings::VA_SURFACE_ATTRIB_MEM_TYPE_USER_PTR,
     DrmPrime2 = bindings::VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
+    DrmPrime3 = bindings::VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_3,
 }
 
 /// Used when we want the VA driver to allocate surface memory for us. In this case we don't need
@@ -62,6 +64,8 @@ impl private::Sealed for bindings::VASurfaceAttribExternalBuffers {}
 impl SurfaceExternalDescriptor for bindings::VASurfaceAttribExternalBuffers {}
 impl private::Sealed for bindings::VADRMPRIMESurfaceDescriptor {}
 impl SurfaceExternalDescriptor for bindings::VADRMPRIMESurfaceDescriptor {}
+impl private::Sealed for bindings::VADRMPRIME3SurfaceDescriptor {}
+impl SurfaceExternalDescriptor for bindings::VADRMPRIME3SurfaceDescriptor {}
 
 /// Trait allowing to import an external memory source to use with a surface by setting the
 /// `VASurfaceAttribMemoryType` and `VASurfaceAttribExternalBuffers` attributes.
@@ -354,6 +358,9 @@ impl<D: SurfaceMemoryDescriptor> Surface<D> {
     pub fn export_prime(&self) -> Result<DrmPrimeSurfaceDescriptor, VaError> {
         let mut desc: bindings::VADRMPRIMESurfaceDescriptor = Default::default();
 
+        // SAFETY: The pointer `desc` is passed to a trusted VA-API video driver and the driver
+        // fills the output to the pointer. The output doesn't reference anything which is managed
+        // by the driver side.
         unsafe {
             va_check!(bindings::vaExportSurfaceHandle(
                 self.display.handle(),
@@ -368,10 +375,10 @@ impl<D: SurfaceMemoryDescriptor> Surface<D> {
         // to create "safe" descriptors outside of this method and thus from made up values,
         // violating the safety guarantee that our FDs are legit.
 
-        let objects = (0..desc.num_objects as usize)
-            // Make sure we don't go out of bounds.
-            .take(4)
-            .map(|i| desc.objects[i])
+        let objects = desc
+            .objects
+            .iter()
+            .take(min(4, desc.num_objects as usize))
             .map(|o| {
                 DrmPrimeSurfaceDescriptorObject {
                     // Safe because `o.fd` is a valid file descriptor returned by
@@ -383,10 +390,10 @@ impl<D: SurfaceMemoryDescriptor> Surface<D> {
             })
             .collect();
 
-        let layers = (0..desc.num_layers as usize)
-            // Make sure we don't go out of bounds.
-            .take(4)
-            .map(|i| desc.layers[i])
+        let layers = desc
+            .layers
+            .iter()
+            .take(min(4, desc.num_layers as usize))
             .map(|l| DrmPrimeSurfaceDescriptorLayer {
                 drm_format: l.drm_format,
                 num_planes: l.num_planes,
@@ -407,6 +414,65 @@ impl<D: SurfaceMemoryDescriptor> Surface<D> {
             height: desc.height,
             objects,
             layers,
+        })
+    }
+
+    /// Returns a DRMPRIME3 descriptor for this surface.
+    pub fn export_prime3(&self) -> Result<DrmPrime3SurfaceDescriptor, VaError> {
+        let mut desc: bindings::VADRMPRIME3SurfaceDescriptor = Default::default();
+        // SAFETY: The pointer `desc` is passed to a trusted VA-API video driver and the driver
+        // fills the output to the pointer. The output doesn't reference anything which is managed
+        // by the driver side.
+        unsafe {
+            va_check!(bindings::vaExportSurfaceHandle(
+                self.display.handle(),
+                self.id(),
+                bindings::VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_3,
+                bindings::VA_EXPORT_SURFACE_READ_ONLY | bindings::VA_EXPORT_SURFACE_COMPOSED_LAYERS,
+                &mut desc as *mut _ as *mut c_void,
+            ))
+        }?;
+
+        let objects = desc
+            .objects
+            .iter()
+            .take(min(4, desc.num_objects as usize))
+            .map(|o| {
+                DrmPrimeSurfaceDescriptorObject {
+                    // Safe because `o.fd` is a valid file descriptor returned by
+                    // `vaExportSurfaceHandle`.
+                    fd: unsafe { OwnedFd::from_raw_fd(o.fd) },
+                    size: o.size,
+                    drm_format_modifier: o.drm_format_modifier,
+                }
+            })
+            .collect();
+
+        let layers = desc
+            .layers
+            .iter()
+            .take(min(4, desc.num_layers as usize))
+            .map(|l| DrmPrimeSurfaceDescriptorLayer {
+                drm_format: l.drm_format,
+                num_planes: l.num_planes,
+                object_index: [
+                    l.object_index[0] as u8,
+                    l.object_index[1] as u8,
+                    l.object_index[2] as u8,
+                    l.object_index[3] as u8,
+                ],
+                offset: l.offset,
+                pitch: l.pitch,
+            })
+            .collect();
+
+        Ok(DrmPrime3SurfaceDescriptor {
+            fourcc: desc.fourcc,
+            width: desc.width,
+            height: desc.height,
+            objects,
+            layers,
+            flags: desc.flags,
         })
     }
 }
@@ -453,4 +519,14 @@ pub struct DrmPrimeSurfaceDescriptor {
     pub height: u32,
     pub objects: Vec<DrmPrimeSurfaceDescriptorObject>,
     pub layers: Vec<DrmPrimeSurfaceDescriptorLayer>,
+}
+
+/// Safe wrapper around `VADRMPRIME3SurfaceDescriptor`.
+pub struct DrmPrime3SurfaceDescriptor {
+    pub fourcc: u32,
+    pub width: u32,
+    pub height: u32,
+    pub objects: Vec<DrmPrimeSurfaceDescriptorObject>,
+    pub layers: Vec<DrmPrimeSurfaceDescriptorLayer>,
+    pub flags: u32,
 }

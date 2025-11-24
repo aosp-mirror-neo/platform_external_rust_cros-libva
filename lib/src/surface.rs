@@ -226,8 +226,8 @@ impl<D: SurfaceMemoryDescriptor> Surface<D> {
             //
             // Also all the pointers in `attrs` are pointing to valid objects that haven't been
             // moved or destroyed.
-            match va_check(unsafe {
-                bindings::vaCreateSurfaces(
+            match unsafe {
+                va_check!(bindings::vaCreateSurfaces(
                     display.handle(),
                     rt_format,
                     width,
@@ -236,8 +236,8 @@ impl<D: SurfaceMemoryDescriptor> Surface<D> {
                     1,
                     attrs.as_mut_ptr(),
                     attrs.len() as u32,
-                )
-            }) {
+                ))
+            } {
                 Ok(()) => surfaces.push(Self {
                     display: Rc::clone(&display),
                     id: surface_id,
@@ -263,7 +263,7 @@ impl<D: SurfaceMemoryDescriptor> Surface<D> {
     /// is safe to use the render target for a different picture.
     pub fn sync(&self) -> Result<(), VaError> {
         // Safe because `self` represents a valid VASurface.
-        va_check(unsafe { bindings::vaSyncSurface(self.display.handle(), self.id) })
+        unsafe { va_check!(bindings::vaSyncSurface(self.display.handle(), self.id)) }
     }
 
     /// Convenience function to return a VASurfaceID vector. Useful to interface with the C API
@@ -276,9 +276,13 @@ impl<D: SurfaceMemoryDescriptor> Surface<D> {
     pub fn query_status(&self) -> Result<bindings::VASurfaceStatus::Type, VaError> {
         let mut status: bindings::VASurfaceStatus::Type = 0;
         // Safe because `self` represents a valid VASurface.
-        va_check(unsafe {
-            bindings::vaQuerySurfaceStatus(self.display.handle(), self.id, &mut status)
-        })?;
+        unsafe {
+            va_check!(bindings::vaQuerySurfaceStatus(
+                self.display.handle(),
+                self.id,
+                &mut status,
+            ))
+        }?;
 
         Ok(status)
     }
@@ -287,14 +291,14 @@ impl<D: SurfaceMemoryDescriptor> Surface<D> {
         let mut raw: *const bindings::VASurfaceDecodeMBErrors = std::ptr::null();
 
         // Safe because `self` represents a valid VASurface.
-        va_check(unsafe {
-            bindings::vaQuerySurfaceError(
+        unsafe {
+            va_check!(bindings::vaQuerySurfaceError(
                 self.display.handle(),
                 self.id,
                 bindings::VA_STATUS_ERROR_DECODING_ERROR as i32,
                 (&mut raw) as *mut _ as *mut _,
-            )
-        })?;
+            ))
+        }?;
 
         let mut errors = vec![];
 
@@ -350,15 +354,15 @@ impl<D: SurfaceMemoryDescriptor> Surface<D> {
     pub fn export_prime(&self) -> Result<DrmPrimeSurfaceDescriptor, VaError> {
         let mut desc: bindings::VADRMPRIMESurfaceDescriptor = Default::default();
 
-        va_check(unsafe {
-            bindings::vaExportSurfaceHandle(
+        unsafe {
+            va_check!(bindings::vaExportSurfaceHandle(
                 self.display.handle(),
                 self.id(),
                 bindings::VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2,
                 bindings::VA_EXPORT_SURFACE_READ_ONLY | bindings::VA_EXPORT_SURFACE_COMPOSED_LAYERS,
                 &mut desc as *mut _ as *mut c_void,
-            )
-        })?;
+            ))
+        }?;
 
         // We do not use a `From<VADRMPRIMESurfaceDescriptor>` implementation as this would allow
         // to create "safe" descriptors outside of this method and thus from made up values,

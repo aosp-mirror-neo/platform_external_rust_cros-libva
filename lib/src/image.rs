@@ -53,9 +53,13 @@ impl<'a> Image<'a> {
 
         // Safe since `picture.inner.context` represents a valid `VAContext` and `image` has been
         // successfully created at this point.
-        match va_check(unsafe {
-            bindings::vaMapBuffer(surface.display().handle(), image.buf, &mut addr)
-        }) {
+        match unsafe {
+            va_check!(bindings::vaMapBuffer(
+                surface.display().handle(),
+                image.buf,
+                &mut addr
+            ))
+        } {
             Ok(_) => {
                 // Assert that libva provided us with a coded resolution that is
                 // at least as large as `display_resolution`.
@@ -103,9 +107,13 @@ impl<'a> Image<'a> {
         let mut image: bindings::VAImage = Default::default();
 
         // Safe because `self` has a valid display handle and ID.
-        va_check(unsafe {
-            bindings::vaDeriveImage(surface.display().handle(), surface.id(), &mut image)
-        })?;
+        unsafe {
+            va_check!(bindings::vaDeriveImage(
+                surface.display().handle(),
+                surface.id(),
+                &mut image
+            ))
+        }?;
 
         Self::new(surface, image, true, visible_rect)
     }
@@ -128,20 +136,20 @@ impl<'a> Image<'a> {
         let dpy = surface.display().handle();
 
         // Safe because `dpy` is a valid display handle.
-        va_check(unsafe {
-            bindings::vaCreateImage(
+        unsafe {
+            va_check!(bindings::vaCreateImage(
                 dpy,
                 &mut format,
                 coded_resolution.0 as i32,
                 coded_resolution.1 as i32,
                 &mut image,
-            )
-        })?;
+            ))
+        }?;
 
         // Safe because `dpy` is a valid display handle, `picture.surface` is a valid VASurface and
         // `image` is a valid `VAImage`.
-        match va_check(unsafe {
-            bindings::vaGetImage(
+        match unsafe {
+            va_check!(bindings::vaGetImage(
                 dpy,
                 surface.id(),
                 0,
@@ -149,8 +157,8 @@ impl<'a> Image<'a> {
                 coded_resolution.0,
                 coded_resolution.1,
                 image.image_id,
-            )
-        }) {
+            ))
+        } {
             Ok(()) => Self::new(surface, image, false, visible_rect),
 
             Err(e) => {

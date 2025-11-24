@@ -305,13 +305,21 @@ impl Buffer {
                 c_param as *mut _ as *mut std::ffi::c_void,
                 std::mem::size_of_val(c_param),
             ),
+            BufferType::ProtectedSliceDataBuffer(ref mut data) => {
+                (data.as_mut_ptr() as *mut std::ffi::c_void, data.len())
+            }
+            #[cfg(feature = "intel-protected-content-headers")]
+            BufferType::CencStatusParameterBuffer(ref mut c_param) => (
+                c_param as *mut _ as *mut std::ffi::c_void,
+                std::mem::size_of_val(c_param),
+            ),
         };
 
         // Safe because `self` represents a valid `VAContext`. `ptr` and `size` are also ensured to
         // be correct, as `ptr` is just a cast to `*c_void` from a Rust struct, and `size` is
         // computed from `std::mem::size_of_val`.
-        va_check(unsafe {
-            bindings::vaCreateBuffer(
+        unsafe {
+            va_check!(bindings::vaCreateBuffer(
                 context.display().handle(),
                 context.id(),
                 type_.inner(),
@@ -319,8 +327,8 @@ impl Buffer {
                 nb_elements as u32,
                 ptr,
                 &mut buffer_id,
-            )
-        })?;
+            ))?;
+        }
 
         Ok(Self {
             context,
@@ -339,9 +347,12 @@ impl Drop for Buffer {
     fn drop(&mut self) {
         // Safe because `self` represents a valid buffer, created with
         // vaCreateBuffers.
-        let status = va_check(unsafe {
-            bindings::vaDestroyBuffer(self.context.display().handle(), self.id)
-        });
+        let status = unsafe {
+            va_check!(bindings::vaDestroyBuffer(
+                self.context.display().handle(),
+                self.id,
+            ))
+        };
 
         if status.is_err() {
             error!("vaDestroyBuffer failed: {}", status.unwrap_err());
@@ -385,6 +396,12 @@ pub enum BufferType {
     EncPackedHeaderData(Vec<u8>),
     /// Abstraction over `VAEncryptionParameters`
     EncryptionParameters(bindings::VAEncryptionParameters),
+    /// Abstraction over `VAProtectedSliceDataBufferType`.
+    ProtectedSliceDataBuffer(Vec<u8>),
+    /// Abstraction over `VACencStatusParameters`.
+    /// The structure is defined in the intel downstream header.
+    #[cfg(feature = "intel-protected-content-headers")]
+    CencStatusParameterBuffer(bindings::VACencStatusParameters),
 }
 
 impl BufferType {
@@ -434,6 +451,13 @@ impl BufferType {
 
             BufferType::EncryptionParameters(_) => {
                 bindings::VABufferType::VAEncryptionParameterBufferType
+            }
+            BufferType::ProtectedSliceDataBuffer(_) => {
+                bindings::VABufferType::VAProtectedSliceDataBufferType
+            }
+            #[cfg(feature = "intel-protected-content-headers")]
+            BufferType::CencStatusParameterBuffer(_) => {
+                bindings::VACencStatusParameterBufferType as bindings::VABufferType::Type
             }
         }
     }
@@ -591,9 +615,13 @@ impl<'p> MappedCodedBuffer<'p> {
         let mut addr = std::ptr::null_mut();
         let mut segments = Vec::new();
 
-        va_check(unsafe {
-            bindings::vaMapBuffer(buffer.0.context.display().handle(), buffer.id(), &mut addr)
-        })?;
+        unsafe {
+            va_check!(bindings::vaMapBuffer(
+                buffer.0.context.display().handle(),
+                buffer.id(),
+                &mut addr
+            ))?
+        };
 
         while !addr.is_null() {
             let segment: &bindings::VACodedBufferSegment =
@@ -629,9 +657,12 @@ impl<'p> MappedCodedBuffer<'p> {
 
 impl<'p> Drop for MappedCodedBuffer<'p> {
     fn drop(&mut self) {
-        let status = va_check(unsafe {
-            bindings::vaUnmapBuffer(self.buffer.0.context.display().handle(), self.buffer.id())
-        });
+        let status = unsafe {
+            va_check!(bindings::vaUnmapBuffer(
+                self.buffer.0.context.display().handle(),
+                self.buffer.id(),
+            ))
+        };
 
         if status.is_err() {
             error!("vaUnmapBuffer failed: {}", status.unwrap_err());

@@ -9,7 +9,7 @@ use std::ptr;
 use std::rc::Rc;
 use std::slice;
 
-use log::error;
+use log;
 
 use crate::bindings;
 use crate::buffer::Buffer;
@@ -23,10 +23,11 @@ use crate::VaError;
 pub struct ProtectedSession {
     /// The display from which the protected session was created.
     display: Rc<Display>,
+    /// The context the protected session is attached to.
+    context: Option<Rc<Context>>,
+
     /// The ID of the protected session.
     id: bindings::VAProtectedSessionID,
-    /// The ID of the context this protected session is attached to.
-    context_id: Option<bindings::VAContextID>,
 }
 
 impl ProtectedSession {
@@ -45,19 +46,20 @@ impl ProtectedSession {
 
         Ok(Self {
             display,
+            context: None,
             id: session_id,
-            context_id: None,
         })
     }
 
     /// Attach the protected session to a `context`.
-    pub fn attach(&mut self, context: &Context) -> Result<(), VaError> {
-        if self.context_id.is_some() {
+    pub fn attach(&mut self, context: Rc<Context>) -> Result<(), VaError> {
+        if self.context.is_some() {
             log::error!(
                 "Please detach the existing attached context before attaching a new context"
             );
             return Err(VaError::non_va_func(
-                NonZero::new(bindings::VA_STATUS_ERROR_OPERATION_FAILED as i32).unwrap(),
+                NonZero::new(bindings::VA_STATUS_ERROR_OPERATION_FAILED as i32)
+                    .expect("VA_STATUS_ERROR_OPERATION_FAILED is not zero"),
             ));
         }
 
@@ -70,24 +72,27 @@ impl ProtectedSession {
             ))
         }?;
 
-        self.context_id = Some(context.id());
+        self.context = Some(context);
         Ok(())
     }
 
     /// Detach the protected session from the context it is attached to.
     pub fn detach(&mut self) -> Result<(), VaError> {
-        if self.context_id.is_none() {
+        if self.context.is_none() {
             return Ok(());
         }
         // Safe because `display` is a valid display handle and we checked that `context_id` is not `None`.
         unsafe {
             va_check!(bindings::vaDetachProtectedSession(
                 self.display.handle(),
-                self.context_id.unwrap(),
+                self.context
+                    .as_ref()
+                    .expect("context validness is checked above")
+                    .id(),
             ))
         }?;
 
-        self.context_id = None;
+        self.context = None;
         Ok(())
     }
 
@@ -155,7 +160,7 @@ impl ProtectedSession {
 impl Drop for ProtectedSession {
     fn drop(&mut self) {
         self.detach()
-            .unwrap_or_else(|e| error!("vaDetachProtectedSession failed: {}", e));
+            .unwrap_or_else(|e| log::error!("vaDetachProtectedSession failed: {e}"));
         // Safe because `self` represents a valid `VAProtectedSessionID`.
         unsafe {
             va_check!(bindings::vaDestroyProtectedSession(
@@ -163,7 +168,7 @@ impl Drop for ProtectedSession {
                 self.id
             ))
         }
-        .unwrap_or_else(|e| error!("vaDestroyProtectedSession failed: {}", e));
+        .unwrap_or_else(|e| log::error!("vaDestroyProtectedSession failed: {e}"));
     }
 }
 
@@ -258,8 +263,8 @@ impl Drop for ProtectedSessionExecuteBuffer<'_> {
             ))
         };
 
-        if status.is_err() {
-            error!("vaDestroyBuffer failed: {}", status.unwrap_err());
+        if let Err(e) = status {
+            log::error!("vaDestroyBuffer failed: {e}");
         }
     }
 }
@@ -293,8 +298,8 @@ impl<'a> Drop for MappedProtectedSessionExecuteBuffer<'a> {
                 self.source.id()
             ))
         };
-        if status.is_err() {
-            error!("vaUnmapBuffer failed: {}", status.unwrap_err());
+        if let Err(e) = status {
+            log::error!("vaUnmapBuffer failed: {e}");
         }
     }
 }

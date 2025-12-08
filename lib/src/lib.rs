@@ -19,6 +19,8 @@ mod protected_session;
 mod surface;
 mod usage_hint;
 
+pub use bindings::_VADRMPRIME3SurfaceDescriptor__bindgen_ty_1 as VADRMPRIME3SurfaceDescriptorObject;
+pub use bindings::_VADRMPRIME3SurfaceDescriptor__bindgen_ty_2 as VADRMPRIME3SurfaceDescriptorLayer;
 pub use bindings::_VADRMPRIMESurfaceDescriptor__bindgen_ty_1 as VADRMPRIMESurfaceDescriptorObject;
 pub use bindings::_VADRMPRIMESurfaceDescriptor__bindgen_ty_2 as VADRMPRIMESurfaceDescriptorLayer;
 pub use bindings::*;

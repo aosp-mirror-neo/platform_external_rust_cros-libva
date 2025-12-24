@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::num::TryFromIntError;
 use std::rc::Rc;
 
 use log::error;
@@ -26,6 +27,14 @@ pub enum QuerySurfaceAttributesError {
     VaError(#[from] VaError),
     #[error("error while converting attribute: {0}")]
     GenericValueError(#[from] GenericValueError),
+}
+
+#[derive(Debug, Error)]
+pub enum QueryConfigAttributesError {
+    #[error("error while calling vaQueryConfigAttributes: {0}")]
+    VaError(#[from] VaError),
+    #[error("error while converting an integer: {0}")]
+    IntConversionError(#[from] TryFromIntError),
 }
 
 impl Config {
@@ -122,6 +131,44 @@ impl Config {
                     .map_err(QuerySurfaceAttributesError::GenericValueError)
             })
             .collect()
+    }
+
+    /// Query the current config attributes.
+    pub fn query_config_attributes(
+        &self,
+    ) -> Result<Vec<bindings::VAConfigAttrib>, QueryConfigAttributesError> {
+        // Safe because `self` represents a valid `VADisplay`.
+        let mut max_num_config_attributes: usize =
+            unsafe { bindings::vaMaxNumConfigAttributes(self.display.handle()) }.try_into()?;
+
+        let mut profile = bindings::VAProfile::VAProfileNone;
+        let mut entrypoint = bindings::VAEntrypoint::VAEntrypointVLD;
+        let mut attrib_list = Vec::with_capacity(max_num_config_attributes);
+        attrib_list.resize(
+            max_num_config_attributes,
+            bindings::VAConfigAttrib::default(),
+        );
+        let mut num_attribs = 0;
+
+        // Safe because `self` represents a valid `VADisplay` and `VAConfig`. Additionally, all
+        // pointers passed below point to data that was just allocated above. In particular, the
+        // libva documentation requires that for the attribute list, the caller passes a pointer to
+        // an array that can hold at least vaMaxNumConfigAttributes() elements, and that allocation
+        // happened with the Vec::with_capacity() call above.
+        unsafe {
+            va_check!(bindings::vaQueryConfigAttributes(
+                self.display.handle(),
+                self.id,
+                &mut profile,
+                &mut entrypoint,
+                attrib_list.as_mut_ptr(),
+                &mut num_attribs,
+            ))
+        }?;
+
+        attrib_list.truncate(num_attribs.try_into()?);
+
+        Ok(attrib_list)
     }
 }
 

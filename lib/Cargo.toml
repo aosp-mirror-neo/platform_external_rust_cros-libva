@@ -13,7 +13,6 @@ readme.workspace = true
 intel-protected-content-headers = []
 
 [dependencies]
-bitflags = "2.5"
 log = { version = "0", features = ["release_max_level_debug"] }
 
 [build-dependencies]

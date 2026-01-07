@@ -6,7 +6,6 @@ use std::num::TryFromIntError;
 use std::rc::Rc;
 
 use log::error;
-use thiserror::Error;
 
 use crate::bindings;
 use crate::display::Display;
@@ -21,21 +20,63 @@ pub struct Config {
     id: bindings::VAConfigID,
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum QuerySurfaceAttributesError {
-    #[error("error while calling vaQuerySurfaceAttributes: {0}")]
-    VaError(#[from] VaError),
-    #[error("error while converting attribute: {0}")]
-    GenericValueError(#[from] GenericValueError),
+    VaError(VaError),
+    GenericValueError(GenericValueError),
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum QueryConfigAttributesError {
-    #[error("error while calling vaQueryConfigAttributes: {0}")]
-    VaError(#[from] VaError),
-    #[error("error while converting an integer: {0}")]
-    IntConversionError(#[from] TryFromIntError),
+    VaError(VaError),
+    IntConversionError(TryFromIntError),
 }
+
+impl std::fmt::Display for QuerySurfaceAttributesError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::VaError(e) => write!(f, "error while calling vaQuerySurfaceAttributes: {e}"),
+            Self::GenericValueError(e) => write!(f, "error while converting attribute: {e}"),
+        }
+    }
+}
+
+impl From<VaError> for QuerySurfaceAttributesError {
+    fn from(error: VaError) -> Self {
+        Self::VaError(error)
+    }
+}
+
+impl From<GenericValueError> for QuerySurfaceAttributesError {
+    fn from(error: GenericValueError) -> Self {
+        Self::GenericValueError(error)
+    }
+}
+
+impl std::error::Error for QuerySurfaceAttributesError {}
+
+impl std::fmt::Display for QueryConfigAttributesError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::VaError(e) => write!(f, "Verror while calling vaQueryConfigAttributes: {e}"),
+            Self::IntConversionError(e) => write!(f, "error while converting an integer: {e}"),
+        }
+    }
+}
+
+impl From<VaError> for QueryConfigAttributesError {
+    fn from(error: VaError) -> Self {
+        Self::VaError(error)
+    }
+}
+
+impl From<TryFromIntError> for QueryConfigAttributesError {
+    fn from(error: TryFromIntError) -> Self {
+        Self::IntConversionError(error)
+    }
+}
+
+impl std::error::Error for QueryConfigAttributesError {}
 
 impl Config {
     /// Creates a Config by wrapping around the `vaCreateConfig` call. This is just a helper for

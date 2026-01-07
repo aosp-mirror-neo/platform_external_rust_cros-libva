@@ -10,8 +10,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use thiserror::Error;
-
 use crate::bindings;
 use crate::config::Config;
 use crate::context::Context;
@@ -79,15 +77,24 @@ pub struct Display {
 }
 
 /// Error type for `Display::open_drm_display`.
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum OpenDrmDisplayError {
-    #[error("cannot open DRM device: {0}")]
     DeviceOpen(io::Error),
-    #[error("vaGetDisplayDRM returned NULL")]
     VaGetDisplayDrm,
-    #[error("call to vaInitialize failed: {0}")]
     VaInitialize(VaError),
 }
+
+impl std::fmt::Display for OpenDrmDisplayError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OpenDrmDisplayError::DeviceOpen(e) => write!(f, "cannot open DRM device: {e}"),
+            OpenDrmDisplayError::VaGetDisplayDrm => write!(f, "vaGetDisplayDRM returned NULL"),
+            OpenDrmDisplayError::VaInitialize(e) => write!(f, "call to vaInitialize failed: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for OpenDrmDisplayError {}
 
 impl Display {
     /// Opens and initializes a specific DRM `Display`.

@@ -36,9 +36,7 @@ rust_library {
     edition: "2021",
     defaults: ["cros_libva_protected_content_rust_library_defaults"],
     rustlibs: [
-        "libbitflags",
         "liblog_rust",
-        "libthiserror",
     ],
     apex_available: [
         "//apex_available:platform",

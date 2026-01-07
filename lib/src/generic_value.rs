@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use thiserror::Error;
-
 use crate::bindings;
 
 /// A wrapper over `VAGenericValue` giving us safe access to the underlying union members.
@@ -19,11 +17,22 @@ pub enum GenericValue {
     Func(bindings::VAGenericFunc),
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum GenericValueError {
-    #[error("unexpected VAGenericValueType {0}")]
     UnexpectedType(u32),
 }
+
+impl std::fmt::Display for GenericValueError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GenericValueError::UnexpectedType(type_) => {
+                write!(f, "unexpected generic value type: {}", type_)
+            }
+        }
+    }
+}
+
+impl std::error::Error for GenericValueError {}
 
 impl TryFrom<bindings::VAGenericValue> for GenericValue {
     type Error = GenericValueError;

@@ -29,7 +29,11 @@ rust_defaults_cros_codecs_protected_content {
 
 rust_binary_host {
     name: "cros_libva_bindgen_build",
-    srcs: ["build.rs"],
+    srcs: [
+        "build.rs",
+        "//external/rust/cros-libva/lib:cros_libva_bindgen_build_lib_src",
+    ],
+    use_expansive_default_srcs: false,
     rustlibs: [
         "libbindgen",
         "libbindgen_cmd",

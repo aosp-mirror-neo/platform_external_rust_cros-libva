@@ -1,9 +1,10 @@
 {
     "package": {
       "cros_libva": {
+        "add_toplevel_block": "filegroup {\n    name: \"cros_libva_bindgen_build_lib_src\",\n    srcs: [\"lib/bindgen_gen.rs\"],\n}",
         "host_supported": false,
         "add_module_block": "android/srcs.bp"
       }
     },
-    "run_cargo": false,
+    "run_cargo": false
 }

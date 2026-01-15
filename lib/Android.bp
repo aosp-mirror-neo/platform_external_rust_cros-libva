@@ -61,3 +61,8 @@ rust_library {
         },
     },
 }
+
+filegroup {
+    name: "cros_libva_bindgen_build_lib_src",
+    srcs: ["bindgen_gen.rs"],
+}

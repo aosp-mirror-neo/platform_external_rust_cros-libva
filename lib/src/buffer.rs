@@ -580,19 +580,27 @@ pub enum EncMacroblockParameterBuffer {
 }
 
 /// Wrapper type representing a buffer created with `vaCreateBuffer` with VAEncCodedBufferType.
-pub struct EncCodedBuffer(Buffer);
+pub struct EncCodedBuffer {
+    buffer: Buffer,
+    size: usize,
+}
 
 impl EncCodedBuffer {
     pub(crate) fn new(context: Rc<Context>, size: usize) -> Result<Self, VaError> {
-        Ok(Self(Buffer::new(
-            context,
-            BufferType::EncCodedBuffer(size),
-        )?))
+        Ok(Self {
+            buffer: Buffer::new(context, BufferType::EncCodedBuffer(size))?,
+            size,
+        })
     }
 
     /// Convenience function to return buffer's `VABufferID`.
     pub fn id(&self) -> bindings::VABufferID {
-        self.0.id
+        self.buffer.id
+    }
+
+    /// Returns the size of the buffer in bytes.
+    pub fn size(&self) -> usize {
+        self.size
     }
 }
 
@@ -617,7 +625,7 @@ impl<'p> MappedCodedBuffer<'p> {
 
         unsafe {
             va_check!(bindings::vaMapBuffer(
-                buffer.0.context.display().handle(),
+                buffer.buffer.context.display().handle(),
                 buffer.id(),
                 &mut addr
             ))?
@@ -659,7 +667,7 @@ impl<'p> Drop for MappedCodedBuffer<'p> {
     fn drop(&mut self) {
         let status = unsafe {
             va_check!(bindings::vaUnmapBuffer(
-                self.buffer.0.context.display().handle(),
+                self.buffer.buffer.context.display().handle(),
                 self.buffer.id(),
             ))
         };

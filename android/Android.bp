@@ -7,7 +7,7 @@ package {
 }
 
 soong_config_module_type_import {
-    from: "system/cros-codecs/Android.bp",
+    from: "system/desktop/cros-codecs/Android.bp",
     module_types: [
         "rust_defaults_cros_codecs_protected_content",
     ],

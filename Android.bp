@@ -8,3 +8,20 @@ license {
     license_kinds: ["SPDX-license-identifier-BSD-3-Clause"],
     license_text: ["LICENSE"],
 }
+
+soong_config_module_type {
+    name: "rust_defaults_cros_libva_protected_content",
+    module_type: "rust_defaults",
+    config_namespace: "cros_libva_config",
+    variables: ["protected_content"],
+    properties: [
+        "cflags",
+        "features",
+        "header_libs",
+    ],
+}
+
+soong_config_string_variable {
+    name: "protected_content",
+    values: ["intel"],
+}

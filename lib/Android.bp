@@ -10,13 +10,11 @@ package {
 }
 
 soong_config_module_type_import {
-    from: "system/desktop/cros-codecs/Android.bp",
-    module_types: [
-        "rust_defaults_cros_codecs_protected_content",
-    ],
+    from: "external/rust/cros-libva/Android.bp",
+    module_types: ["rust_defaults_cros_libva_protected_content"],
 }
 
-rust_defaults_cros_codecs_protected_content {
+rust_defaults_cros_libva_protected_content {
     name: "cros_libva_protected_content_rust_library_defaults",
     soong_config_variables: {
         protected_content: {
